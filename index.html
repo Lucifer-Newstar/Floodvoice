@@ -1,0 +1,127 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FloodVoice · Speak, and be found</title>
+<meta property="og:title" content="FloodVoice · Speak, and be found">
+<meta property="og:description" content="Voice-first flood rescue system for Chennai">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0b1730;color:#eaf1ff}
+header{display:flex;align-items:center;gap:14px;padding:10px 18px;background:#0f2148;border-bottom:1px solid #22396b;flex-wrap:wrap}
+h1{margin:0;font-size:24px}h1 span{color:#5fb3ff}.tag{font-size:13px;color:#9fb6e0}
+.badge{padding:4px 10px;border-radius:20px;font-size:13px;font-weight:700}.on{background:#1c7c46}.off{background:#a3332b}
+.tabs{margin-left:auto;display:flex;gap:6px}.tabs button{background:#1a2f5e;color:#eaf1ff;border:0;padding:8px 14px;border-radius:8px;font-size:15px;cursor:pointer}.tabs button.act{background:#3a7bff}
+.view{display:none}.view.act{display:block}
+#citizen{max-width:560px;margin:0 auto;padding:20px;text-align:center}
+#mic{width:230px;height:230px;border-radius:50%;border:0;background:radial-gradient(circle,#ff5a4f,#c4231b);color:#fff;font-size:26px;font-weight:800;cursor:pointer;box-shadow:0 0 0 12px rgba(255,90,79,.18);margin:14px auto;display:block;line-height:1.3}
+#mic.rec{animation:p 1s infinite}@keyframes p{50%{box-shadow:0 0 0 28px rgba(255,90,79,.05)}}
+textarea{width:100%;font-size:17px;padding:10px;border-radius:10px;border:1px solid #2a4580;background:#0f2148;color:#fff;min-height:70px}
+.btn{background:#3a7bff;color:#fff;border:0;border-radius:10px;padding:12px 18px;font-size:17px;font-weight:700;cursor:pointer}
+.big4{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}.big4 a{display:block;padding:22px 8px;border-radius:14px;font-size:22px;font-weight:800;color:#fff;text-decoration:none}
+.res{background:#c4231b}.food{background:#d9822b}.med{background:#7b3fc4}.road{background:#5a6478}
+.card{background:#12264f;border:1px solid #24427d;border-radius:12px;padding:12px;margin:10px 0;text-align:left}
+#dash{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;padding:12px;height:calc(100vh - 62px)}
+#map{height:100%;border-radius:12px;min-height:420px}#side{overflow:auto}
+.item{background:#12264f;border-left:6px solid #888;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:14px}
+.item b{font-size:15px}.pr{float:right;background:#0b1730;border-radius:6px;padding:2px 7px;font-weight:800}
+.filters button{background:#1a2f5e;color:#fff;border:0;border-radius:16px;padding:5px 10px;margin:2px;cursor:pointer;font-size:13px}.filters button.act{background:#3a7bff}
+#brief{white-space:pre-wrap;font-size:15px}.small{font-size:12px;color:#9fb6e0}
+.mesh{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;font-size:15px;margin:8px 0}.node{background:#1a2f5e;padding:6px 10px;border-radius:8px}.node.lit{background:#1c7c46}
+@media(max-width:900px){#dash{grid-template-columns:1fr;height:auto}#map{height:420px}}
+</style></head><body>
+<header><h1>🌊 Flood<span>Voice</span></h1><div class="tag">Speak, and be found · Chennai</div>
+<span id="net" class="badge on">● Online</span>
+<div class="tabs"><button id="tC" class="act" onclick="show('citizen')">🆘 Citizen</button><button id="tD" onclick="show('dash')">🚤 Rescue Dashboard</button><button onclick="cfg()">⚙️</button></div></header>
+
+<div id="citizen" class="view act">
+<p style="font-size:18px;margin:6px 0">உதவி வேண்டுமா? பட்டனை அழுத்தி பேசுங்க<br><span class="small">Need help? Press and speak, in Tamil, Tanglish or English</span></p>
+<button id="mic" onclick="rec()">🎤<br>அழுத்தி<br>பேசுங்க</button>
+<textarea id="txt" placeholder="Your words appear here (you can also type)"></textarea>
+<div style="margin:10px 0"><label><input type="checkbox" id="forother"> Reporting for someone else (neighbour / relative)</label></div>
+<button class="btn" onclick="submitReport()">📤 Send for help</button>
+<div id="out"></div>
+<div class="card"><b>📵 No internet? Tap one, it sends an SMS with your location</b>
+<div class="big4"><a class="res" data-k="RESCUE">🚨 Rescue<br>மீட்பு</a><a class="food" data-k="FOOD">🍚 Food<br>உணவு</a><a class="med" data-k="MEDICAL">💊 Medical<br>மருத்துவம்</a><a class="road" data-k="ROAD">🚧 Road blocked<br>சாலை</a></div>
+<div class="small" style="margin-top:6px">Opens your SMS app pre-filled, e.g. "FV RESCUE 12.98,80.22". Works on any network.</div></div>
+<div class="card"><b>📡 No signal at all: Bluetooth relay</b> <span class="small">(prototype, simulated)</span>
+<div class="mesh" id="mesh"><span class="node">📱 You FV-102</span>→<span class="node">FV-217</span>→<span class="node">FV-031</span>→<span class="node">📡 Tower</span></div>
+<button class="btn" style="background:#1a2f5e" onclick="meshAnim()">▶ Show relay</button></div>
+</div>
+
+<div id="dash" class="view">
+<div id="map"></div>
+<div id="side">
+<div class="card"><button class="btn" onclick="brief()">🧠 AI Command Brief</button> <span class="small" id="aimode"></span><div id="brief" style="margin-top:8px"></div></div>
+<div class="filters" id="filters"></div>
+<h3 style="margin:8px 0 2px">🚨 Rescue priority <span class="small">(AI understands → rules engine ranks)</span></h3>
+<div id="list"></div>
+<h3 style="margin:12px 0 2px">⚫ Went dark <span class="small">(silent 2+ hrs in flood zone, last seen)</span></h3><div id="dark"></div>
+<h3 style="margin:12px 0 2px">📥 Channels</h3><div id="chan" class="small"></div>
+</div></div>
+
+<script>
+const CAT={rescue:['🚨','#e0392f','Rescue'],medical:['💊','#9b59e0','Medical'],food_water:['🍚','#e8902f','Food/Water'],electrical:['⚡','#e8c72f','Electrical'],civic:['🚧','#8a94a8','Civic']};
+const CH={app:'📱 App',sms:'💬 SMS',call:'📞 Call',mesh:'📡 Mesh'};
+const SEED=[{"id": 1, "area": "Velachery", "text": "Veetla thanni 3 adi irukku, amma bedridden, ground floor la maattikittom", "lat": 12.9815, "lng": 80.218, "depth_cm": 90, "category": "rescue", "severity": 5, "vulnerable": true, "channel": "call", "reportCount": 1, "status": "open", "reason": ""}, {"id": 2, "area": "Velachery", "text": "Vijaya Nagar la 2 adi thanni, current illa, phone charge kammi", "lat": 12.989, "lng": 80.2215, "depth_cm": 60, "category": "electrical", "severity": 3, "vulnerable": false, "channel": "app", "reportCount": 1, "status": "open", "reason": ""}, {"id": 3, "area": "Mudichur", "text": "Full colony thanni la, 20 families terrace la irukkom, boat venum", "lat": 12.918, "lng": 80.071, "depth_cm": 150, "category": "rescue", "severity": 5, "vulnerable": false, "channel": "sms", "reportCount": 1, "status": "open", "reason": ""}, {"id": 4, "area": "Madipakkam", "text": "3 naal ah food illa, kuzhandhaigal irukkanga, paal venum", "lat": 12.9623, "lng": 80.1986, "depth_cm": 70, "category": "food_water", "severity": 4, "vulnerable": true, "channel": "app", "reportCount": 1, "status": "open", "reason": ""}, {"id": 5, "area": "T. Nagar", "text": "Drainage block, road la 1 adi thanni, vehicles maattikichu", "lat": 13.0418, "lng": 80.2341, "depth_cm": 30, "category": "civic", "severity": 2, "vulnerable": false, "channel": "app", "reportCount": 1, "status": "open", "reason": ""}, {"id": 6, "area": "Mylapore", "text": "Appa bedridden patient, oxygen cylinder theeruthu, hospital poganum", "lat": 13.0339, "lng": 80.2619, "depth_cm": 30, "category": "medical", "severity": 4, "vulnerable": true, "channel": "call", "reportCount": 1, "status": "open", "reason": ""}, {"id": 7, "area": "Tambaram West", "text": "Pasanga and periyavanga 8 per veetla, thanni ulla varuthu", "lat": 12.9249, "lng": 80.1, "depth_cm": 100, "category": "rescue", "severity": 4, "vulnerable": true, "channel": "sms", "reportCount": 1, "status": "open", "reason": ""}, {"id": 8, "area": "Pallikaranai", "text": "Marsh side la thanni romba, road cut aayiduchu", "lat": 12.9349, "lng": 80.2137, "depth_cm": 120, "category": "rescue", "severity": 4, "vulnerable": false, "channel": "app", "reportCount": 1, "status": "open", "reason": ""}, {"id": 9, "area": "Adyar", "text": "River overflow, Kotturpuram bridge kitta thanni yeruthu", "lat": 13.0012, "lng": 80.2565, "depth_cm": 80, "category": "civic", "severity": 3, "vulnerable": false, "channel": "app", "reportCount": 1, "status": "open", "reason": ""}, {"id": 10, "area": "Saidapet", "text": "Kudikka thanni illa, 2 naal ah, 30 per irukkom", "lat": 13.0213, "lng": 80.2231, "depth_cm": 50, "category": "food_water", "severity": 3, "vulnerable": false, "channel": "call", "reportCount": 1, "status": "open", "reason": ""}, {"id": 11, "area": "KK Nagar", "text": "Transformer la spark varuthu, thanni la current leak aagalam", "lat": 13.041, "lng": 80.199, "depth_cm": 40, "category": "electrical", "severity": 4, "vulnerable": false, "channel": "app", "reportCount": 1, "status": "open", "reason": ""}, {"id": 12, "area": "Perungudi", "text": "Office la 15 per maattikittom, 4 adi thanni", "lat": 12.9654, "lng": 80.2461, "depth_cm": 120, "category": "rescue", "severity": 4, "vulnerable": false, "channel": "sms", "reportCount": 1, "status": "open", "reason": ""}, {"id": 13, "area": "Chromepet", "text": "Sugar patient, insulin theernthu pochu", "lat": 12.9516, "lng": 80.1462, "depth_cm": 40, "category": "medical", "severity": 4, "vulnerable": true, "channel": "app", "reportCount": 1, "status": "open", "reason": ""}, {"id": 14, "area": "Ashok Nagar", "text": "Maram vizhunthuduchu road block, ambulance poga mudiyala", "lat": 13.035, "lng": 80.212, "depth_cm": 20, "category": "civic", "severity": 3, "vulnerable": false, "channel": "app", "reportCount": 1, "status": "open", "reason": ""}, {"id": 15, "area": "Ekkattuthangal", "text": "Ground floor full ah thanni, mela floor la irukkom, food venum", "lat": 13.017, "lng": 80.205, "depth_cm": 110, "category": "food_water", "severity": 3, "vulnerable": false, "channel": "call", "reportCount": 1, "status": "open", "reason": ""}];
+let R=JSON.parse(localStorage.fv_reports||'null')||SEED;
+const DARK=[{name:'Kamala, 72',area:'Mudichur',lat:12.915,lng:80.075,last:'2 h 40 m ago'},{name:'Ravi, 38 (family of 4)',area:'Pallikaranai',lat:12.938,lng:80.205,last:'3 h 10 m ago'}];
+let filt='all',map,layer;
+function prio(r){return Math.round((r.severity+r.depth_cm/20+(r.vulnerable?3:0)+(r.category=='medical'?2:0))*10)/10}
+function dist(a,b){const R6=6371,dl=(b.lat-a.lat)*Math.PI/180,dn=(b.lng-a.lng)*Math.PI/180,x=Math.sin(dl/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dn/2)**2;return 2*R6*Math.asin(Math.sqrt(x))}
+function save(){localStorage.fv_reports=JSON.stringify(R)}
+function show(v){document.querySelectorAll('.view').forEach(e=>e.classList.remove('act'));document.getElementById(v).classList.add('act');tC.classList.toggle('act',v=='citizen');tD.classList.toggle('act',v=='dash');if(v=='dash'){initMap();setTimeout(()=>map.invalidateSize(),50);render()}}
+function initMap(){if(map)return;map=L.map('map').setView([12.98,80.19],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);layer=L.layerGroup().addTo(map)}
+function render(){
+ const f=document.getElementById('filters');f.innerHTML=['all',...Object.keys(CAT)].map(k=>`<button class="${filt==k?'act':''}" onclick="filt='${k}';render()">${k=='all'?'All':CAT[k][0]+' '+CAT[k][2]}</button>`).join('');
+ const rs=R.filter(r=>r.status=='open'&&(filt=='all'||r.category==filt)).sort((a,b)=>prio(b)-prio(a));
+ document.getElementById('list').innerHTML=rs.map((r,i)=>`<div class="item" style="border-color:${CAT[r.category][1]}"><span class="pr">${prio(r)}</span><b>#${i+1} ${CAT[r.category][0]} ${r.area}</b> ${r.vulnerable?'⚠️ vulnerable':''} ${r.reportCount>1?'· '+r.reportCount+' reports':''}<br>${r.reason||r.text}<br><span class="small">${r.depth_cm} cm · severity ${r.severity} · via ${CH[r.channel]||r.channel}</span></div>`).join('');
+ document.getElementById('dark').innerHTML=DARK.map(d=>`<div class="item" style="border-color:#444"><b>⚫ ${d.name}</b> · ${d.area}<br><span class="small">Last seen ${d.last}, no report since</span></div>`).join('');
+ const c={};R.forEach(r=>c[r.channel]=(c[r.channel]||0)+1);document.getElementById('chan').innerHTML=Object.entries(c).map(([k,v])=>`${CH[k]||k}: <b>${v}</b>`).join(' · ')+'<br>Call line (Exotel/Twilio) = next step; call-tagged reports here are sample data.';
+ if(!layer)return;layer.clearLayers();
+ rs.forEach(r=>{const [e,col]=CAT[r.category];L.circleMarker([r.lat,r.lng],{radius:8+r.severity*2+(r.reportCount-1)*3,color:'#fff',weight:2,fillColor:col,fillOpacity:.9}).addTo(layer).bindPopup(`<b>${e} ${r.area}</b> ${r.vulnerable?'⚠️':''}<br>${r.text}<br><i>${r.reason||''}</i><br>${r.depth_cm} cm · priority ${prio(r)} · ${r.reportCount} report(s)`)});
+ DARK.forEach(d=>L.circleMarker([d.lat,d.lng],{radius:10,color:'#fff',weight:2,dashArray:'4',fillColor:'#111',fillOpacity:.9}).addTo(layer).bindPopup(`<b>⚫ Went dark</b><br>${d.name}, ${d.area}<br>Last seen ${d.last}`));
+}
+// ---------- AI ----------
+function key(){return localStorage.fv_key||''}
+function cfg(){const k=prompt('Gemini API key (stored only in this browser). Leave empty to use the built-in rule parser.',key());if(k!==null){localStorage.fv_key=k.trim();upd()}}
+function upd(){document.getElementById('aimode').textContent=key()?'AI: Gemini live':'AI: built-in rule parser (add Gemini key in ⚙️)'}
+async function gemini(p){for(const m of ['gemini-2.5-flash','gemini-2.0-flash','gemini-1.5-flash']){try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key()}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:p}]}]})});if(!r.ok)continue;const j=await r.json();return j.candidates[0].content.parts.map(x=>x.text).join('')}catch(e){}}throw new Error('Gemini unreachable')}
+const AREAS={velachery:[12.9815,80.218],mudichur:[12.918,80.071],madipakkam:[12.9623,80.1986],'t nagar':[13.0418,80.2341],tnagar:[13.0418,80.2341],mylapore:[13.0339,80.2619],tambaram:[12.9249,80.1],pallikaranai:[12.9349,80.2137],adyar:[13.0012,80.2565],saidapet:[13.0213,80.2231],'kk nagar':[13.041,80.199],perungudi:[12.9654,80.2461],chromepet:[12.9516,80.1462],'ashok nagar':[13.035,80.212],ekkattuthangal:[13.017,80.205],guindy:[13.0067,80.2206],porur:[13.0382,80.1565],anna:[13.085,80.21],tondiarpet:[13.126,80.288],royapuram:[13.113,80.294],perungalathur:[12.905,80.096],kodambakkam:[13.052,80.225],thoraipakkam:[12.94,80.236],sholinganallur:[12.901,80.2279],ennore:[13.214,80.32],manali:[13.166,80.26]};
+function ruleParse(t){const s=t.toLowerCase();
+ if(!/(thanni|water|flood|vellam|help|udhavi|rescue|food|saapadu|current|medical|hospital|patient|maattik|boat|road|மழை|தண்ணீர்|வெள்ளம்|உதவி)/.test(s))return{type:'not_a_flood_report'};
+ let area='Unknown',ll=null;for(const k in AREAS)if(s.includes(k)){area=k.replace(/\b\w/g,c=>c.toUpperCase());ll=AREAS[k];break}
+ let depth=40;const m=s.match(/(\d+(?:\.\d+)?)\s*(adi|feet|ft|அடி)/);if(m)depth=Math.round(parseFloat(m[1])*30);else{const c=s.match(/(\d+)\s*cm/);if(c)depth=+c[1]}
+ const vul=/(bedridden|patient|elderly|old|paati|thatha|periyavanga|kuzhandhai|child|baby|pregnant|kids|pasanga|வயதான|குழந்தை)/.test(s);
+ let cat='rescue';if(/(oxygen|insulin|medicine|hospital|medical|marunthu|sugar|bp)/.test(s))cat='medical';else if(/(food|saapadu|paal|milk|kudikka|drinking|unavu)/.test(s))cat='food_water';else if(/(current|transformer|spark|electric|wire)/.test(s))cat='electrical';else if(/(drainage|road|tree|maram|block)/.test(s)&&!/maattik/.test(s))cat='civic';
+ let sev=Math.min(5,Math.max(1,Math.round(depth/40)+(vul?1:0)+(cat=='rescue'||cat=='medical'?1:0)));
+ return{area,ll,depth_cm:depth,category:cat,severity:sev,vulnerable:vul,reason:`${vul?'Vulnerable person, ':''}${depth} cm water, ${CAT[cat][2].toLowerCase()} need`}}
+async function understand(t){
+ if(!key())return ruleParse(t);
+ const p=`You are a Chennai flood rescue triage AI. The report may be Tamil, Tanglish or English. If it is not about a flood or emergency return {"type":"not_a_flood_report"}. Otherwise return ONLY JSON: {"area": Chennai locality name, "depth_cm": number (1 adi = 30 cm), "category": one of rescue|medical|food_water|electrical|civic, "severity": 1-5, "vulnerable": true if elderly, children, bedridden, patient or pregnant, "reason": one short English sentence for rescuers}.\nReport: ${t}`;
+ try{const o=JSON.parse((await gemini(p)).replace(/```json|```/g,'').trim());if(o.type)return o;const k=Object.keys(AREAS).find(k=>(o.area||'').toLowerCase().includes(k));o.ll=k?AREAS[k]:null;return o}catch(e){const o=ruleParse(t);o.reason+=' (rule parser, AI offline)';return o}}
+function getPos(){return new Promise(res=>{if(!navigator.geolocation)return res(null);navigator.geolocation.getCurrentPosition(p=>res([p.coords.latitude,p.coords.longitude]),()=>res(null),{timeout:4000})})}
+async function submitReport(){
+ const t=txt.value.trim();if(!t)return;out.innerHTML='<div class="card">🧠 Understanding your message…</div>';
+ const o=await understand(t);
+ if(o.type=='not_a_flood_report'){out.innerHTML='<div class="card">ℹ️ This doesn\'t look like a flood emergency, so no pin was created.</div>';return}
+ let ll=o.ll;if(!ll){const g=await getPos();ll=g||[13.0+Math.random()*.05,80.2+Math.random()*.05]}
+ const r={id:Date.now(),area:o.area,text:t,lat:ll[0],lng:ll[1],depth_cm:+o.depth_cm||40,category:CAT[o.category]?o.category:'rescue',severity:+o.severity||3,vulnerable:!!o.vulnerable,reason:o.reason||'',channel:'app',reportCount:1,status:'open'};
+ const near=R.find(x=>x.status=='open'&&x.category==r.category&&dist(x,r)<1);
+ if(near){near.reportCount++;near.severity=Math.max(near.severity,r.severity);near.vulnerable=near.vulnerable||r.vulnerable;near.reason=r.reason}else R.push(r);save();
+ const rank=R.filter(x=>x.status=='open').sort((a,b)=>prio(b)-prio(a)).indexOf(near||r)+1;
+ out.innerHTML=`<div class="card">✅ <b>உதவி வருகிறது. Help is coming.</b><br>${CAT[r.category][0]} ${CAT[r.category][2]} · ${r.area} · ${r.depth_cm} cm ${r.vulnerable?'· ⚠️ vulnerable':''}<br>${r.reason}<br><span class="small">${near?'Merged with a nearby report ('+near.reportCount+' reports now)':'New pin on the rescue map'} · priority #${rank}</span></div>`;
+ speak('உதவி வருகிறது. பாதுகாப்பான இடத்தில் இருங்கள்.');txt.value=''}
+function speak(s){try{const u=new SpeechSynthesisUtterance(s);u.lang='ta-IN';speechSynthesis.speak(u)}catch(e){}}
+function rec(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert('Voice needs Chrome. You can type instead.');return}
+ const r=new SR();r.lang=localStorage.fv_lang||'ta-IN';r.interimResults=true;mic.classList.add('rec');
+ r.onresult=e=>{txt.value=[...e.results].map(x=>x[0].transcript).join(' ')};r.onend=()=>{mic.classList.remove('rec');if(txt.value.trim())submitReport()};r.onerror=()=>mic.classList.remove('rec');r.start()}
+async function brief(){
+ const open=R.filter(r=>r.status=='open').sort((a,b)=>prio(b)-prio(a));const b=document.getElementById('brief');b.textContent='🧠 Reading all open reports…';
+ if(key()){try{b.textContent=await gemini(`You are a Chennai flood control room officer. Read these open reports (JSON) and write a 3-line command brief in plain English: 1) most critical zones, 2) number of vulnerable people, 3) where to send boats, medical teams and food first. Only use area names from the data.\n${JSON.stringify(open.map(({area,text,depth_cm,category,severity,vulnerable,reportCount})=>({area,text,depth_cm,category,severity,vulnerable,reportCount})))}`);return}catch(e){}}
+ const top=[...new Set(open.slice(0,3).map(r=>r.area))],v=open.filter(r=>r.vulnerable).length;
+ const by=c=>[...new Set(open.filter(r=>r.category==c).map(r=>r.area))].slice(0,3).join(', ')||'none';
+ b.textContent=`1) Critical zones: ${top.join(', ')}.\n2) ${v} reports with vulnerable people (elderly, children, patients).\n3) Boats → ${by('rescue')}. Medical → ${by('medical')}. Food/water → ${by('food_water')}.${key()?'':'\n(rule-based brief: add a Gemini key in ⚙️ for the AI-written version)'}`}
+document.querySelectorAll('.big4 a').forEach(a=>a.onclick=async e=>{e.preventDefault();const g=await getPos();const ll=g?g.map(x=>x.toFixed(4)).join(','):'location-unknown';location.href=`sms:?&body=${encodeURIComponent('FV '+a.dataset.k+' '+ll)}`});
+function meshAnim(){const n=[...document.querySelectorAll('#mesh .node')];n.forEach(x=>x.classList.remove('lit'));n.forEach((x,i)=>setTimeout(()=>x.classList.add('lit'),i*700))}
+function net(){const o=navigator.onLine;const e=document.getElementById('net');e.className='badge '+(o?'on':'off');e.textContent=o?'● Online':'● Offline: use SMS buttons'}
+addEventListener('online',net);addEventListener('offline',net);net();upd();
+</script></body></html>
