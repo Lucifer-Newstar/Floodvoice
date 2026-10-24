@@ -27,6 +27,16 @@ textarea{width:100%;font-size:17px;padding:10px;border-radius:10px;border:1px so
 #brief{white-space:pre-wrap;font-size:15px}.small{font-size:12px;color:#9fb6e0}
 .mesh{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;font-size:15px;margin:8px 0}.node{background:#1a2f5e;padding:6px 10px;border-radius:8px}.node.lit{background:#1c7c46}
 @media(max-width:900px){#dash{grid-template-columns:1fr;height:auto}#map{height:420px}}
+header{background:linear-gradient(90deg,#0f2148,#16306a)}
+.card{box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.steps{display:flex;gap:8px;justify-content:center;margin:8px 0 2px;flex-wrap:wrap}.steps div{background:#12264f;border:1px solid #24427d;border-radius:20px;padding:6px 12px;font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}.stats div{background:#12264f;border-radius:10px;padding:8px;text-align:center}.stats b{display:block;font-size:22px}.stats span{font-size:11px;color:#9fb6e0}
+.legend{font-size:12px;color:#cfe0ff;margin:4px 0}.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 3px 0 8px}
+.gov a,.gov button{display:inline-block;margin:4px 4px 0 0;background:#1c4fa8;color:#fff;border:0;border-radius:8px;padding:8px 10px;font-size:14px;text-decoration:none;cursor:pointer}
+.route{font-size:12px;color:#ffd27a}
+@media print{header,.tabs,#citizen,.filters,.gov,#map{display:none!important}#dash{display:block!important}body{background:#fff;color:#000}.item{background:#fff;color:#000;border:1px solid #999}}
+.updrow{display:flex;gap:6px;margin:8px 0 4px;flex-wrap:wrap}.ub{flex:1;min-width:110px;border:0;border-radius:8px;padding:9px 6px;font-size:15px;font-weight:700;color:#fff;cursor:pointer}.ub.up{background:#c4231b}.ub.dn{background:#2b6cb0}.ub.cf{background:#8a6d00}
+.areaupd .it{background:#0f2148;border:1px solid #2a4580;border-radius:10px;padding:10px;margin-top:8px}
 </style></head><body>
 <header><h1>🌊 Flood<span>Voice</span></h1><div class="tag">Speak, and be found · Chennai</div>
 <span id="net" class="badge on">● Online</span>
@@ -34,28 +44,41 @@ textarea{width:100%;font-size:17px;padding:10px;border-radius:10px;border:1px so
 
 <div id="citizen" class="view act">
 <p style="font-size:18px;margin:6px 0">உதவி வேண்டுமா? பட்டனை அழுத்தி பேசுங்க<br><span class="small">Need help? Press and speak, in Tamil, Tanglish or English</span></p>
+<div class="steps"><div>① Press &amp; speak</div><div>② We understand</div><div>③ Help is sent</div></div>
 <button id="mic" onclick="rec()">🎤<br>அழுத்தி<br>பேசுங்க</button>
+<div style="margin:4px 0"><button id="langb" class="btn" style="background:#1a2f5e;font-size:14px;padding:6px 12px" onclick="setLang()">🗣 Tanglish / English</button></div>
 <textarea id="txt" placeholder="Your words appear here (you can also type)"></textarea>
 <div style="margin:10px 0"><label><input type="checkbox" id="forother"> Reporting for someone else (neighbour / relative)</label></div>
 <button class="btn" onclick="submitReport()">📤 Send for help</button>
 <div id="out"></div>
+<div class="card areaupd"><b>📢 Update a report near you</b><div class="small">Seen the water change? One tap keeps the rescue map current.</div><div id="nearupd"></div></div>
 <div class="card"><b>📵 No internet? Tap one, it sends an SMS with your location</b>
 <div class="big4"><a class="res" data-k="RESCUE">🚨 Rescue<br>மீட்பு</a><a class="food" data-k="FOOD">🍚 Food<br>உணவு</a><a class="med" data-k="MEDICAL">💊 Medical<br>மருத்துவம்</a><a class="road" data-k="ROAD">🚧 Road blocked<br>சாலை</a></div>
 <div class="small" style="margin-top:6px">Opens your SMS app pre-filled, e.g. "FV RESCUE 12.98,80.22". Works on any network.</div></div>
 <div class="card"><b>📡 No signal at all: Bluetooth relay</b> <span class="small">(prototype, simulated)</span>
 <div class="mesh" id="mesh"><span class="node">📱 You FV-102</span>→<span class="node">FV-217</span>→<span class="node">FV-031</span>→<span class="node">📡 Tower</span></div>
 <button class="btn" style="background:#1a2f5e" onclick="meshAnim()">▶ Show relay</button></div>
+<div class="card"><b>🔦 Last resort</b> <span class="small">(no network, no neighbours)</span>
+<div class="big4"><a href="#" id="sosb" style="background:#b8860b" onclick="sos();return false">🚨 SOS beacon<br>flash + siren</a><a href="tel:112" style="background:#a3332b">📞 Call 112<br>அவசரம்</a></div>
+<div class="small" style="margin-top:6px">Reports saved on the phone are sent automatically when any signal returns (store &amp; forward, roadmap).</div></div>
 </div>
+<div id="sosov" onclick="sos()" style="display:none;flex-direction:column;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;font-size:48px;font-weight:900;color:#000;text-align:center">🚨 SOS<br><span style="font-size:20px">tap to stop</span></div>
 
 <div id="dash" class="view">
 <div id="map"></div>
 <div id="side">
+<div class="stats"><div><b id="s_open">–</b><span>open requests</span></div><div><b id="s_ppl">–</b><span>reports</span></div><div><b id="s_vul">–</b><span>vulnerable</span></div><div><b id="s_res">–</b><span>rescued</span></div></div>
+<div class="legend"><i style="background:#e0392f"></i>Rescue<i style="background:#9b59e0"></i>Medical<i style="background:#e8902f"></i>Food/Water<i style="background:#e8c72f"></i>Electrical<i style="background:#8a94a8"></i>Civic<i style="background:#111;border:1px dashed #fff"></i>Went dark</div>
 <div class="card"><button class="btn" onclick="brief()">🧠 AI Command Brief</button> <span class="small" id="aimode"></span><div id="brief" style="margin-top:8px"></div></div>
 <div class="filters" id="filters"></div>
 <h3 style="margin:8px 0 2px">🚨 Rescue priority <span class="small">(AI understands → rules engine ranks)</span></h3>
 <div id="list"></div>
+<div class="card gov"><b>🏛 Official hand-off</b> <span class="small">every report is auto-routed to the right authority</span>
+<div class="small" style="margin:4px 0">🚨 Rescue → NDRF / State EOC (1070) · 💊 Medical → 108 · 🍚 Food → District relief (1077) · ⚡ Power → Electricity board · 🚧 Civic → Corporation (1913)</div>
+<a href="/api/export.csv">📊 Export CSV (Excel)</a><a href="/api/export.geojson">🗺 Export GeoJSON (Govt GIS)</a><button onclick="sitrep()">📧 Email SITREP</button><button onclick="window.print()">🖨 Print report</button>
+<div class="small" style="margin-top:4px">Live integration with govt systems needs an official tie-up (roadmap). Exports use standard formats officials can open today.</div></div>
 <h3 style="margin:12px 0 2px">⚫ Went dark <span class="small">(silent 2+ hrs in flood zone, last seen)</span></h3><div id="dark"></div>
-<h3 style="margin:12px 0 2px">📥 Channels</h3><div id="chan" class="small"></div>
+<h3 style="margin:12px 0 2px">📥 Channels <span class="small">(live, updates every 5 s)</span></h3><div id="chan" class="small"></div>
 </div></div>
 
 <script>
@@ -73,7 +96,7 @@ function initMap(){if(map)return;map=L.map('map').setView([12.98,80.19],11);L.ti
 function render(){
  const f=document.getElementById('filters');f.innerHTML=['all',...Object.keys(CAT)].map(k=>`<button class="${filt==k?'act':''}" onclick="filt='${k}';render()">${k=='all'?'All':CAT[k][0]+' '+CAT[k][2]}</button>`).join('');
  const rs=R.filter(r=>r.status=='open'&&(filt=='all'||r.category==filt)).sort((a,b)=>prio(b)-prio(a));
- document.getElementById('list').innerHTML=rs.map((r,i)=>`<div class="item" style="border-color:${CAT[r.category][1]}"><span class="pr">${prio(r)}</span><b>#${i+1} ${CAT[r.category][0]} ${r.area}</b> ${r.vulnerable?'⚠️ vulnerable':''} ${r.reportCount>1?'· '+r.reportCount+' reports':''}<br>${r.reason||r.text}<br><span class="small">${r.depth_cm} cm · severity ${r.severity} · via ${CH[r.channel]||r.channel}</span></div>`).join('');
+ document.getElementById('list').innerHTML=rs.map((r,i)=>`<div class="item" style="border-color:${CAT[r.category][1]}"><span class="pr">${prio(r)}</span><b>#${i+1} ${CAT[r.category][0]} ${r.area}</b> ${r.vulnerable?'⚠️ vulnerable':''} ${r.reportCount>1?'· '+r.reportCount+' reports':''}<br>${r.reason||r.text}<br><span class="small">🚤 Assigned: <b>${team(r)}</b></span><br><span class="route">🏛 Route: ${AUTH[r.category]}</span><br><span class="small">${r.depth_cm} cm · severity ${r.severity} · via ${CH[r.channel]||r.channel}</span> <div class="updrow"><button class="ub up" onclick="upd(${r.id},'up')">🔺 Water rising</button><button class="ub dn" onclick="upd(${r.id},'down')">🔻 Water falling</button>${(r.confirmed||r.reportCount>1)?'':`<button class="ub cf" onclick="upd(${r.id},'confirm')">✔ Confirm</button>`}</div><br><span class="small">${(r.confirmed||r.reportCount>1)?'<b style="color:#4ade80">✅ Confirmed</b>'+(r.reportCount>1?` (${r.reportCount} reports)`:' (by responder)'):'<b style="color:#facc15">⚠ Unverified</b> (1 report)'}${r.trend?` · water ${r.trend=='rising'?'🔺 rising':'🔻 falling'}`:''}${r.updatedAt?` · updated ${Math.max(0,Math.round((Date.now()-r.updatedAt)/60000))} min ago`:''}</span> <button onclick="resolve(${r.id})" style="float:right;background:#1c7c46;color:#fff;border:0;border-radius:6px;padding:3px 8px;cursor:pointer">✅ Rescued</button></div>`).join('');
  document.getElementById('dark').innerHTML=DARK.map(d=>`<div class="item" style="border-color:#444"><b>⚫ ${d.name}</b> · ${d.area}<br><span class="small">Last seen ${d.last}, no report since</span></div>`).join('');
  const c={};R.forEach(r=>c[r.channel]=(c[r.channel]||0)+1);document.getElementById('chan').innerHTML=Object.entries(c).map(([k,v])=>`${CH[k]||k}: <b>${v}</b>`).join(' · ')+'<br>Call line (Exotel/Twilio) = next step; call-tagged reports here are sample data.';
  if(!layer)return;layer.clearLayers();
@@ -82,8 +105,13 @@ function render(){
 }
 // ---------- AI ----------
 function key(){return localStorage.fv_key||''}
-function cfg(){const k=prompt('Gemini API key (stored only in this browser). Leave empty to use the built-in rule parser.',key());if(k!==null){localStorage.fv_key=k.trim();upd()}}
-function upd(){document.getElementById('aimode').textContent=key()?'AI: Gemini live':'AI: built-in rule parser (add Gemini key in ⚙️)'}
+let AIMODE='rules';
+async function cfg(){const k=prompt('Gemini API key: saved on the FloodVoice server so every device uses live AI. Leave empty to switch back to the rule parser.','');if(k===null)return;try{const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:k})});const j=await r.json();alert(j.ok?(j.ai=='gemini'?'✅ Gemini connected for all devices':'Switched to rule parser'):'❌ '+j.error)}catch(e){alert('Server unreachable')}upd()}
+function nearUpd(){const el=document.getElementById('nearupd');if(!el)return;const rs=R.filter(r=>r.status=='open').sort((a,b)=>prio(b)-prio(a)).slice(0,3);
+ el.innerHTML=rs.map(r=>`<div class="it"><b>${CAT[r.category][0]} ${r.area}</b> · ${r.depth_cm} cm${r.trend?` · ${r.trend=='rising'?'🔺 rising':'🔻 falling'}`:''}${r.updatedAt?` · ${Math.max(0,Math.round((Date.now()-r.updatedAt)/60000))} min ago`:''}<div class="updrow"><button class="ub up" onclick="upd(${r.id},'up')">🔺 Rising</button><button class="ub dn" onclick="upd(${r.id},'down')">🔻 Falling</button><button class="ub cf" onclick="upd(${r.id},'confirm')">✔ I see it too</button></div></div>`).join('')}
+async function upd(){try{const j=await (await fetch('/api/health')).json();AIMODE=j.ai}catch(e){AIMODE='offline'}document.getElementById('aimode').textContent=AIMODE=='gemini'?'AI: Gemini (server)':AIMODE=='rules'?'Engine: Tanglish NLP rules (Gemini-ready)':'Server offline: local mode'}
+async function refresh(){try{const r=await fetch('/api/reports',{cache:'no-store'});if(r.ok){R=await r.json();save();render()}}catch(e){}stats();nearUpd()}
+async function resolve(id){try{await fetch('/api/resolve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})}catch(e){}refresh()}
 async function gemini(p){for(const m of ['gemini-2.5-flash','gemini-2.0-flash','gemini-1.5-flash']){try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key()}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:p}]}]})});if(!r.ok)continue;const j=await r.json();return j.candidates[0].content.parts.map(x=>x.text).join('')}catch(e){}}throw new Error('Gemini unreachable')}
 const AREAS={velachery:[12.9815,80.218],mudichur:[12.918,80.071],madipakkam:[12.9623,80.1986],'t nagar':[13.0418,80.2341],tnagar:[13.0418,80.2341],mylapore:[13.0339,80.2619],tambaram:[12.9249,80.1],pallikaranai:[12.9349,80.2137],adyar:[13.0012,80.2565],saidapet:[13.0213,80.2231],'kk nagar':[13.041,80.199],perungudi:[12.9654,80.2461],chromepet:[12.9516,80.1462],'ashok nagar':[13.035,80.212],ekkattuthangal:[13.017,80.205],guindy:[13.0067,80.2206],porur:[13.0382,80.1565],anna:[13.085,80.21],tondiarpet:[13.126,80.288],royapuram:[13.113,80.294],perungalathur:[12.905,80.096],kodambakkam:[13.052,80.225],thoraipakkam:[12.94,80.236],sholinganallur:[12.901,80.2279],ennore:[13.214,80.32],manali:[13.166,80.26]};
 function ruleParse(t){const s=t.toLowerCase();
@@ -101,27 +129,43 @@ async function understand(t){
 function getPos(){return new Promise(res=>{if(!navigator.geolocation)return res(null);navigator.geolocation.getCurrentPosition(p=>res([p.coords.latitude,p.coords.longitude]),()=>res(null),{timeout:4000})})}
 async function submitReport(){
  const t=txt.value.trim();if(!t)return;out.innerHTML='<div class="card">🧠 Understanding your message…</div>';
- const o=await understand(t);
- if(o.type=='not_a_flood_report'){out.innerHTML='<div class="card">ℹ️ This doesn\'t look like a flood emergency, so no pin was created.</div>';return}
- let ll=o.ll;if(!ll){const g=await getPos();ll=g||[13.0+Math.random()*.05,80.2+Math.random()*.05]}
- const r={id:Date.now(),area:o.area,text:t,lat:ll[0],lng:ll[1],depth_cm:+o.depth_cm||40,category:CAT[o.category]?o.category:'rescue',severity:+o.severity||3,vulnerable:!!o.vulnerable,reason:o.reason||'',channel:'app',reportCount:1,status:'open'};
- const near=R.find(x=>x.status=='open'&&x.category==r.category&&dist(x,r)<1);
- if(near){near.reportCount++;near.severity=Math.max(near.severity,r.severity);near.vulnerable=near.vulnerable||r.vulnerable;near.reason=r.reason}else R.push(r);save();
- const rank=R.filter(x=>x.status=='open').sort((a,b)=>prio(b)-prio(a)).indexOf(near||r)+1;
- out.innerHTML=`<div class="card">✅ <b>உதவி வருகிறது. Help is coming.</b><br>${CAT[r.category][0]} ${CAT[r.category][2]} · ${r.area} · ${r.depth_cm} cm ${r.vulnerable?'· ⚠️ vulnerable':''}<br>${r.reason}<br><span class="small">${near?'Merged with a nearby report ('+near.reportCount+' reports now)':'New pin on the rescue map'} · priority #${rank}</span></div>`;
- speak('உதவி வருகிறது. பாதுகாப்பான இடத்தில் இருங்கள்.');txt.value=''}
+ const g=await getPos();let res=null;
+ try{const r=await fetch('/api/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,lat:g?g[0]:null,lng:g?g[1]:null,forOther:forother.checked,channel:'app'})});if(r.ok)res=await r.json()}catch(e){}
+ if(!res){out.innerHTML='<div class="card">📵 No connection to the server. Use the SMS buttons below, they work on any network.</div>';return}
+ if(res.type=='not_a_flood_report'){out.innerHTML='<div class="card">ℹ️ This doesn\'t look like a flood emergency, so no pin was created.</div>';return}
+ const r=res.report;
+ out.innerHTML=`<div class="card">✅ <b>உதவி வருகிறது. Help is coming.</b><br>${CAT[r.category][0]} ${CAT[r.category][2]} · ${r.area} · ${r.depth_cm} cm ${r.vulnerable?'· ⚠️ vulnerable':''}<br>${r.reason}<br><span class="small">${res.merged?'Merged with a nearby report ('+r.reportCount+' reports now)':'New pin on the rescue map'} · priority #${res.rank} · understood by ${res.ai=='gemini'?'Gemini AI':'FloodVoice NLP engine'}</span></div>`;
+ speak('உதவி வருகிறது. பாதுகாப்பான இடத்தில் இருங்கள்.');txt.value='';refresh()}
 function speak(s){try{const u=new SpeechSynthesisUtterance(s);u.lang='ta-IN';speechSynthesis.speak(u)}catch(e){}}
+let REC=null,recFinal='',silT=null;
+function setLang(){const l=(localStorage.fv_lang||'en-IN')=='en-IN'?'ta-IN':'en-IN';localStorage.fv_lang=l;document.getElementById('langb').textContent=l=='ta-IN'?'🗣 தமிழ்':'🗣 Tanglish / English'}
+function stopRec(submit){if(!REC)return;const r=REC;REC=null;clearTimeout(silT);try{r.stop()}catch(e){}mic.classList.remove('rec');mic.innerHTML='🎤<br>அழுத்தி<br>பேசுங்க';if(submit&&txt.value.trim())submitReport()}
 function rec(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert('Voice needs Chrome. You can type instead.');return}
- const r=new SR();r.lang=localStorage.fv_lang||'ta-IN';r.interimResults=true;mic.classList.add('rec');
- r.onresult=e=>{txt.value=[...e.results].map(x=>x[0].transcript).join(' ')};r.onend=()=>{mic.classList.remove('rec');if(txt.value.trim())submitReport()};r.onerror=()=>mic.classList.remove('rec');r.start()}
-async function brief(){
- const open=R.filter(r=>r.status=='open').sort((a,b)=>prio(b)-prio(a));const b=document.getElementById('brief');b.textContent='🧠 Reading all open reports…';
- if(key()){try{b.textContent=await gemini(`You are a Chennai flood control room officer. Read these open reports (JSON) and write a 3-line command brief in plain English: 1) most critical zones, 2) number of vulnerable people, 3) where to send boats, medical teams and food first. Only use area names from the data.\n${JSON.stringify(open.map(({area,text,depth_cm,category,severity,vulnerable,reportCount})=>({area,text,depth_cm,category,severity,vulnerable,reportCount})))}`);return}catch(e){}}
- const top=[...new Set(open.slice(0,3).map(r=>r.area))],v=open.filter(r=>r.vulnerable).length;
- const by=c=>[...new Set(open.filter(r=>r.category==c).map(r=>r.area))].slice(0,3).join(', ')||'none';
- b.textContent=`1) Critical zones: ${top.join(', ')}.\n2) ${v} reports with vulnerable people (elderly, children, patients).\n3) Boats → ${by('rescue')}. Medical → ${by('medical')}. Food/water → ${by('food_water')}.${key()?'':'\n(rule-based brief: add a Gemini key in ⚙️ for the AI-written version)'}`}
-document.querySelectorAll('.big4 a').forEach(a=>a.onclick=async e=>{e.preventDefault();const g=await getPos();const ll=g?g.map(x=>x.toFixed(4)).join(','):'location-unknown';location.href=`sms:?&body=${encodeURIComponent('FV '+a.dataset.k+' '+ll)}`});
+ if(REC){stopRec(true);return}
+ out.innerHTML='';const r=new SR();REC=r;r.lang=localStorage.fv_lang||'en-IN';r.continuous=true;r.interimResults=true;recFinal='';txt.value='';
+ mic.classList.add('rec');mic.innerHTML='🔴<br>Listening…<br><span style="font-size:16px">tap to send</span>';
+ const arm=()=>{clearTimeout(silT);silT=setTimeout(()=>stopRec(true),4000)};arm();
+ r.onresult=e=>{let interim='';for(let k=e.resultIndex;k<e.results.length;k++){const t=e.results[k][0].transcript;if(e.results[k].isFinal)recFinal+=t+' ';else interim+=t}txt.value=(recFinal+interim).trim();arm()};
+ r.onend=()=>{if(REC===r){try{r.start()}catch(e){stopRec(true)}}};
+ r.onerror=ev=>{if(ev.error=='aborted')return;if(ev.error=='no-speech'){out.innerHTML='<div class="card">🎤 No sound reaching the browser. Check: Chrome browser, Wispr Flow closed, correct mic in Windows sound settings. Or just dictate into the box.</div>';return}stopRec(false);const m={'not-allowed':'Mic permission blocked: click the 🔒 in the address bar → allow Microphone','audio-capture':'No mic available (another app like Wispr Flow may be using it). Type or dictate into the box instead.','network':'Voice service needs internet. Type into the box instead.'};out.innerHTML='<div class="card">🎤 '+(m[ev.error]||('Mic error: '+ev.error))+'</div>'};
+ try{r.start()}catch(e){stopRec(false);out.innerHTML='<div class="card">🎤 Could not start the mic: '+e.message+'</div>'}}
+let sosOn=false,sosT=null,actx=null,osc=null;
+function sos(){const ov=document.getElementById('sosov');sosOn=!sosOn;
+ if(sosOn){ov.style.display='flex';let w=0;sosT=setInterval(()=>{w=!w;ov.style.background=w?'#fff':'#ff2a2a';if(osc)osc.frequency.value=w?1400:900},350);
+  try{actx=new (window.AudioContext||window.webkitAudioContext)();osc=actx.createOscillator();const g=actx.createGain();g.gain.value=.3;osc.type='square';osc.connect(g);g.connect(actx.destination);osc.start()}catch(e){}}
+ else{ov.style.display='none';clearInterval(sosT);try{osc.stop();actx.close()}catch(e){}osc=null}}
+const TEAMS=[{n:'NDRF Boat Team 1',lat:12.975,lng:80.22},{n:'NDRF Boat Team 2',lat:12.925,lng:80.09},{n:'GCC Medical Van',lat:13.03,lng:80.24},{n:'Volunteer Food Unit',lat:13.0,lng:80.2}];
+function team(r){const pool=r.category=='medical'?TEAMS.filter(t=>t.n.includes('Medical')):r.category=='food_water'?TEAMS.filter(t=>t.n.includes('Food')):r.category=='rescue'?TEAMS.filter(t=>t.n.includes('Boat')):TEAMS;let b=pool[0],bd=1e9;pool.forEach(t=>{const x=dist(r,t);if(x<bd){bd=x;b=t}});return b.n+' · '+bd.toFixed(1)+' km'}
+const AUTH={rescue:'NDRF / State EOC (1070)',medical:'108 Ambulance / Health Dept',food_water:'District relief camp (1077)',electrical:'Electricity board',civic:'Greater Chennai Corporation (1913)'};
+async function stats(){try{const s=await (await fetch('/api/stats',{cache:'no-store'})).json();s_open.textContent=s.open;s_ppl.textContent=s.people;s_vul.textContent=s.vulnerable;s_res.textContent=s.rescued}catch(e){}}
+async function sitrep(){let b='';try{b=(await (await fetch('/api/brief',{method:'POST'})).json()).brief}catch(e){}
+ const top=R.filter(r=>r.status=='open').sort((a,c)=>prio(c)-prio(a)).slice(0,8).map((r,i)=>`${i+1}. ${r.area} - ${CAT[r.category][2]} - ${r.depth_cm}cm${r.vulnerable?' - VULNERABLE':''} - ${AUTH[r.category]} - https://maps.google.com/?q=${r.lat},${r.lng}`).join('\n');
+ location.href='mailto:?subject='+encodeURIComponent('FloodVoice Situation Report - Chennai - '+new Date().toLocaleString('en-IN'))+'&body='+encodeURIComponent('SITUATION SUMMARY\n'+b+'\n\nTOP PRIORITY REQUESTS\n'+top+'\n\nFull data (CSV): '+location.origin+'/api/export.csv\nMap data (GeoJSON): '+location.origin+'/api/export.geojson\n\n- FloodVoice')}
+async function upd(id,dir){try{const r=await fetch('/api/update',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id,dir})});if(r.status==429){const j=await r.json();alert('⏳ '+j.error)}}catch(e){}refresh()}
+async function brief(){const b=document.getElementById('brief');b.textContent='🧠 Reading all open reports…';
+ try{const j=await (await fetch('/api/brief',{method:'POST'})).json();b.textContent=j.brief+(j.ai=='gemini'?'\n\n— written by Gemini':'\n\n— generated by the FloodVoice rules engine')}catch(e){b.textContent='Server unreachable'}}
+document.querySelectorAll('.big4 a[data-k]').forEach(a=>a.onclick=async e=>{e.preventDefault();const g=await getPos();const ll=g?g.map(x=>x.toFixed(4)).join(','):'location-unknown';location.href=`sms:?&body=${encodeURIComponent('FV '+a.dataset.k+' '+ll)}`});
 function meshAnim(){const n=[...document.querySelectorAll('#mesh .node')];n.forEach(x=>x.classList.remove('lit'));n.forEach((x,i)=>setTimeout(()=>x.classList.add('lit'),i*700))}
 function net(){const o=navigator.onLine;const e=document.getElementById('net');e.className='badge '+(o?'on':'off');e.textContent=o?'● Online':'● Offline: use SMS buttons'}
-addEventListener('online',net);addEventListener('offline',net);net();upd();
+if(localStorage.fv_lang=='ta-IN')document.getElementById('langb').textContent='🗣 தமிழ்';addEventListener('online',net);addEventListener('offline',net);net();upd();refresh();setInterval(()=>{if(document.getElementById('dash').classList.contains('act'))refresh()},5000);
 </script></body></html>
