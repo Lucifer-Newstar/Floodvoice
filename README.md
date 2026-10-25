@@ -15,7 +15,9 @@ In the 2015 Chennai floods over 500 people died and about 1.8 million were displ
 ## Features
 | Feature | Status |
 |---|---|
-| Voice → AI → pin on the map | Live (Gemini key in ⚙️; built-in rule parser otherwise) |
+| Voice → AI → pin on the map | Live (Gemini key set once on the server via ⚙️; built-in rule parser otherwise) |
+| Shared live map across devices | Live (Cloudflare Worker + D1) |
+| CSV / GeoJSON export for responders | Live |
 | Priority list (rules engine) | Live |
 | Merge reports within 1 km | Live |
 | Category filters | Live |
@@ -29,12 +31,28 @@ In the 2015 Chennai floods over 500 people died and about 1.8 million were displ
 **Priority score:** `severity + depth_cm/20 + 3 if vulnerable + 2 if medical`
 
 ## Run
-Open `index.html` in Chrome. Click ⚙️ and paste a Gemini API key for live AI (stored only in your browser). Without a key, a built-in rule parser is used.
+The app is a Cloudflare Worker (`src/worker.js`) that serves the dashboard (`public/index.html`) and a small API backed by Cloudflare D1.
+
+```bash
+npm install -g wrangler
+wrangler d1 create floodvoice        # paste the database_id into wrangler.toml
+wrangler dev                         # local run at http://localhost:8787
+wrangler deploy                      # publish
+```
+
+Click ⚙️ in the dashboard and paste a Gemini API key to switch on live AI for every device. Without a key, the built-in Tanglish rules engine is used.
+
+API: `/api/reports`, `/api/report`, `/api/update`, `/api/resolve`, `/api/brief`, `/api/stats`, `/api/export.csv`, `/api/export.geojson`, `/api/health`.
 
 `seed.json` holds the 15 sample Chennai reports.
 
+### Known limits
+- `/api/config` and `/api/reset` have no login yet; add auth before real use.
+- Helpline numbers in the app (1070, 1077, 1913) should be verified with the authorities before deployment.
+- The "near you" card shows the top 3 reports by priority, not by distance.
+
 ## Stack
-HTML / JavaScript, Leaflet + OpenStreetMap, Web Speech API, Gemini API.
+HTML / JavaScript, Leaflet + OpenStreetMap, Web Speech API, Gemini API, Cloudflare Workers + D1.
 
 ## Team
 Navin Jairam M
